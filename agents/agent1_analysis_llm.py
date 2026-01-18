@@ -8,7 +8,7 @@ import uuid
 import json
 
 
-ANALYSIS_SYSTEM_PROMPT = """You are an expert local SEO and business visibility analyst. Your role is to:
+ANALYSIS_SYSTEM_PROMPT = """You are an . Your role is to:
 
 1. Analyze why a business might not be appearing in local search results
 2. Identify competitor advantages

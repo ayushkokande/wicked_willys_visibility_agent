@@ -206,12 +206,28 @@ Replace mock data in Agent 1 with:
 4. **Action Tracking:** Database to track action completion over time
 5. **Iterative Improvements:** Track changes and measure impact
 
+## Quick Start
+
+### Run the Streamlit UI
+
+```bash
+cd /Users/samprasmanueldsouza/Desktop/wicked_willys_visibility_agent/wicked_willys_visibility_agent
+source venv/bin/activate
+streamlit run app.py
+```
+
+Then open: **http://localhost:8501**
+
+### With LLM (Claude/GPT)
+
+Create a `.env` file with your API keys:
+```
+ANTHROPIC_API_KEY=your-key-here
+OPENAI_API_KEY=your-key-here
+```
+
+Then run the app and enable "Use LLM" in the sidebar.
+
 ## License
 
 This project is designed for educational and demonstration purposes.
-
-
-##
-cd /Users/samprasmanueldsouza/Desktop/wicked_willys_visibility_agent/wicked_willys_visibility_agent
-source venv/bin/activate
-streamlit run app_interactive.py
