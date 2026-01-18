@@ -1,4 +1,29 @@
-"""Agent 1 with real LLM integration for analysis."""
+"""Agent 1 with real LLM integration for ranking-only output.
+
+Drop-in replacement for your existing `agent_analysis_llm.py` while preserving the
+overall framework and public interface your code depends on:
+
+- Same class name: Agent1AnalysisLLM
+- Same constructor signature
+- Same `analyze(query, business_profile) -> Dict[str, Any]`
+- Same `_parse_json_response` helper (kept, slightly hardened)
+- Same `_generate_summary` method (kept signature)
+
+Behavior:
+- Agent 1 now ONLY produces a ranked list of likely local search results.
+- Legacy keys (competitors/issues/opportunities/etc.) are preserved but empty
+  so downstream code does not break.
+
+Fix included:
+- If no candidates are provided (your current flow), the LLM MUST STILL generate
+  a ranked list (it will not refuse).
+- Adds a single retry if the model returns an empty ranked_results list.
+
+Output:
+- Primary: `ranked_results`
+- Also mirrored into `results` for compatibility with generic pipelines
+- Includes `inferred_location` (coarse; not a street address unless provided)
+"""
 
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -8,61 +33,59 @@ import uuid
 import json
 
 
-ANALYSIS_SYSTEM_PROMPT = """You are an . Your role is to:
+RANKING_SYSTEM_PROMPT = """You are Agent 1: Local Search Results Ranker (SERP Generator).
 
-1. Analyze why a business might not be appearing in local search results
-2. Identify competitor advantages
-3. Diagnose SEO and visibility issues
-4. Provide actionable insights
+Task:
+Given a user query (e.g., “good bars near NYU”), return a ranked list of the TOP local search results a user would expect.
 
-When analyzing, consider:
-- Google My Business optimization
-- Review count and quality
-- Local citations and directory listings
-- On-page SEO factors
-- Content quality and relevance
-- Social signals
-- Technical SEO factors
+Critical rules:
+- You MUST return 5–10 ranked results unless the query is impossible or location is undefined.
+- Do NOT anchor on the target business. The target business is context only and must NOT be forced into rank #1.
+- If you include the target business, include it only if it genuinely fits the query and location. Rank it wherever it naturally belongs.
+- Output MUST be valid JSON only (no markdown, no prose).
+- Do NOT include numeric claims (ratings, review counts, “#1 in NYC”, etc.).
+- inferred_location must be coarse (e.g., “NYU / Washington Square Park, Manhattan, NYC”) unless the user explicitly gave an address.
 
-Always provide specific, actionable insights based on the business profile and query."""
+"""
 
 
 class Agent1AnalysisLLM:
     """
-    Agent 1: Discovery & Analysis Agent with LLM integration
-    
-    Uses LLM to provide intelligent analysis of visibility issues.
+    Agent 1: Discovery & Analysis Agent (refactored to Ranking-Only) with LLM integration.
+
+    Uses LLM to return a ranked list of likely search results for a local query.
     """
-    
+
     def __init__(self, llm_client: Optional[LLMClient] = None):
         """
         Initialize Agent 1 with LLM.
-        
+
         Args:
-            llm_client: LLM client for analysis
+            llm_client: LLM client for ranking output
         """
         self.llm_client = llm_client
-        
+
     def analyze(self, query: str, business_profile: BusinessProfile) -> Dict[str, Any]:
         """
-        Perform comprehensive analysis using LLM.
-        
+        Produce a ranked list using LLM (ranking-only).
+
         Args:
-            query: Business query
-            business_profile: The business being optimized
-            
+            query: User search query
+            business_profile: The business being optimized (kept for context + downstream compatibility)
+
         Returns:
-            Detailed analysis dictionary
+            Analysis dictionary (framework-compatible) containing ranked results.
         """
         analysis_id = str(uuid.uuid4())
-        
-        print(f"  🤖 Analyzing with LLM: '{query}'")
+        clean_query = (query or "").strip()
+
+        print(f"  🤖 Ranking with LLM: '{clean_query}'")
         print(f"  Target business: {business_profile.name}")
-        
-        # Build context for LLM
+
+        # Business context retained for compatibility, but explicitly "context only".
         business_context = f"""
-Business Profile:
-- Name: {business_profile.name}
+Business Profile (context only; do not fabricate claims):
+- Target Name: {business_profile.name}
 - Address: {business_profile.address}
 - Primary Category: {business_profile.primary_category}
 - Secondary Categories: {', '.join(business_profile.secondary_categories)}
@@ -72,161 +95,233 @@ Business Profile:
 - Website: {business_profile.website or 'Not provided'}
 - Google My Business: {'Set up' if business_profile.google_my_business_id else 'Not set up'}
 - Citation Count: {business_profile.citation_count or 'Unknown'}
-"""
-        
-        # Competitor discovery prompt
-        competitor_prompt = f"""
+""".strip()
+
+        # Ranking-only prompt (single call; generate if no candidates are provided).
+        ranking_prompt = f""""
 {business_context}
 
-User Query: "{query}"
+User Query: "{clean_query}"
 
-Based on this query and business profile, analyze the competitive landscape.
+You MUST return a ranked list of businesses for this query.
+- If candidate businesses are provided: rank ONLY those candidates.
+- If no candidates are provided: generate up to 10 plausible real businesses that fit the query and implied location.
 
-Provide a JSON response with:
-1. "estimated_competitors": List of 3-5 likely competitor types in the area with estimated metrics
-2. "why_competitors_rank": Key reasons competitors might rank higher
-3. "target_business_gaps": Specific gaps for {business_profile.name}
+Return valid JSON only in this exact schema:
+{{
+  "query": "{clean_query}",
+  "inferred_location": string,
+  "ranked_results": [
+    {{
+      "rank": integer,
+      "name": string,
+      "address": string|null,
+      "website": string|null,
+      "reason_tokens": [string]
+    }}
+  ],
+  "notes": string
+}}
 
-Format as valid JSON only, no markdown."""
+Constraints:
+- Up to 10 results max.
+- rank must start at 1 and be consecutive.
+- reason_tokens must be <= 3 short phrases derived from the query text only (e.g., ["near NYU", "bar"]).
+- Do NOT include ratings/review counts or other numeric claims.
+- inferred_location must be coarse (e.g., "NYU / Washington Square Park, Manhattan, NYC"), not a street address unless the user provided one.
+""".strip()
 
-        # Issue diagnosis prompt
-        issues_prompt = f"""
-{business_context}
+        # Default / fallback outputs
+        ranking_data: Dict[str, Any] = {
+            "query": clean_query,
+            "inferred_location": "",
+            "ranked_results": [],
+            "notes": "llm_not_called",
+        }
 
-User Query: "{query}"
-
-Diagnose specific visibility issues for {business_profile.name}.
-
-Provide a JSON response with an "issues" array, each issue having:
-- "issue_id": unique identifier
-- "title": brief title
-- "description": detailed description
-- "severity": "critical", "high", or "medium"
-- "impact": business impact description
-- "evidence": supporting evidence
-
-Focus on actionable issues. Format as valid JSON only."""
-
-        # Opportunities prompt
-        opportunities_prompt = f"""
-{business_context}
-
-User Query: "{query}"
-
-Identify opportunities for {business_profile.name} to improve visibility.
-
-Provide a JSON response with an "opportunities" array, each opportunity having:
-- "opportunity_id": unique identifier
-- "title": brief title
-- "description": detailed description
-- "potential_impact": "high", "medium", or "low"
-- "effort": "easy", "medium", or "hard"
-- "reason": why this would help
-
-Format as valid JSON only."""
-
-        # Make LLM calls
         try:
-            print("  → Analyzing competitive landscape...")
-            competitor_response = self.llm_client.generate(
-                competitor_prompt, 
-                system_prompt=ANALYSIS_SYSTEM_PROMPT,
-                temperature=0.3
+            if not self.llm_client:
+                raise RuntimeError("LLM client not provided")
+
+            print("  → Producing ranked results...")
+            ranking_response = self.llm_client.generate(
+                ranking_prompt,
+                system_prompt=RANKING_SYSTEM_PROMPT,
+                temperature=0.2,
             )
-            competitor_data = self._parse_json_response(competitor_response)
-            
-            print("  → Diagnosing visibility issues...")
-            issues_response = self.llm_client.generate(
-                issues_prompt,
-                system_prompt=ANALYSIS_SYSTEM_PROMPT,
-                temperature=0.3
-            )
-            issues_data = self._parse_json_response(issues_response)
-            
-            print("  → Identifying opportunities...")
-            opportunities_response = self.llm_client.generate(
-                opportunities_prompt,
-                system_prompt=ANALYSIS_SYSTEM_PROMPT,
-                temperature=0.3
-            )
-            opportunities_data = self._parse_json_response(opportunities_response)
-            
+            parsed = self._parse_json_response(ranking_response)
+
+            ranked_results = parsed.get("ranked_results", [])
+            if not isinstance(ranked_results, list):
+                ranked_results = []
+
+            # Retry once if empty (common model failure mode)
+            if len(ranked_results) == 0:
+                retry_prompt = (
+                    ranking_prompt
+                    + "\n\nIMPORTANT: Do not refuse due to missing candidates. "
+                      "Produce 5-10 business names localized to the implied area. "
+                      "Return JSON only."
+                )
+                ranking_response_retry = self.llm_client.generate(
+                    retry_prompt,
+                    system_prompt=RANKING_SYSTEM_PROMPT,
+                    temperature=0.3,
+                )
+                parsed_retry = self._parse_json_response(ranking_response_retry)
+
+                rr_retry = parsed_retry.get("ranked_results", [])
+                if isinstance(rr_retry, list) and len(rr_retry) > 0:
+                    parsed = parsed_retry
+                    ranked_results = rr_retry
+
+            # Normalize results: enforce 1..N ranks, max 10, safe types
+            normalized_results: List[Dict[str, Any]] = []
+            for idx, item in enumerate(ranked_results[:10], start=1):
+                if not isinstance(item, dict):
+                    continue
+
+                name = item.get("name", "")
+                address = item.get("address", None)
+                website = item.get("website", None)
+                reason_tokens = item.get("reason_tokens", [])
+
+                if not isinstance(name, str):
+                    name = ""
+                if address is not None and not isinstance(address, str):
+                    address = None
+                if website is not None and not isinstance(website, str):
+                    website = None
+                if not isinstance(reason_tokens, list):
+                    reason_tokens = []
+
+                # Trim reason_tokens to <= 3, stringify elements
+                rt_clean: List[str] = []
+                for t in reason_tokens:
+                    if isinstance(t, str) and t.strip():
+                        rt_clean.append(t.strip())
+                    if len(rt_clean) >= 3:
+                        break
+
+                normalized_results.append(
+                    {
+                        "rank": idx,
+                        "name": name.strip(),
+                        "address": address.strip() if isinstance(address, str) else None,
+                        "website": website.strip() if isinstance(website, str) else None,
+                        "reason_tokens": rt_clean,
+                    }
+                )
+
+            inferred_location = parsed.get("inferred_location", "")
+            if not isinstance(inferred_location, str):
+                inferred_location = ""
+
+            notes = parsed.get("notes", "")
+            if not isinstance(notes, str):
+                notes = ""
+
+            ranking_data = {
+                "query": parsed.get("query", clean_query) if isinstance(parsed.get("query", clean_query), str) else clean_query,
+                "inferred_location": inferred_location.strip(),
+                "ranked_results": normalized_results,
+                "notes": notes.strip(),
+            }
+
+            # If still empty after retry, give a stronger note for debugging
+            if len(ranking_data["ranked_results"]) == 0 and not ranking_data["notes"]:
+                ranking_data["notes"] = "empty_ranked_results_after_retry"
+
         except Exception as e:
             print(f"  ⚠️  LLM error: {e}")
-            # Fallback to basic analysis
-            competitor_data = {"estimated_competitors": [], "why_competitors_rank": [], "target_business_gaps": []}
-            issues_data = {"issues": []}
-            opportunities_data = {"opportunities": []}
-        
-        # Compile results
-        issues = issues_data.get("issues", [])
-        opportunities = opportunities_data.get("opportunities", [])
-        
-        analysis_result = {
+            ranking_data = {
+                "query": clean_query,
+                "inferred_location": "",
+                "ranked_results": [],
+                "notes": f"llm_error: {str(e)}",
+            }
+
+        ranked_results_out = ranking_data.get("ranked_results", [])
+
+        # Framework-compatible result object:
+        # Preserve legacy keys your other code may expect (empty by design here).
+        analysis_result: Dict[str, Any] = {
             "analysis_id": analysis_id,
             "timestamp": datetime.now().isoformat(),
-            "query": query,
+            "query": query,  # preserve original query string (including newline if upstream passed it)
             "target_business": business_profile.name,
             "llm_powered": True,
-            
-            # Competitor Analysis
-            "competitors": competitor_data.get("estimated_competitors", []),
-            "ranking_factors": competitor_data.get("why_competitors_rank", []),
-            "gaps": competitor_data.get("target_business_gaps", []),
-            
-            # Issues
-            "issues": issues,
-            "critical_issues": [i for i in issues if i.get("severity") == "critical"],
-            "high_priority_issues": [i for i in issues if i.get("severity") == "high"],
-            
-            # Opportunities
-            "opportunities": opportunities,
-            
-            # Summary
-            "summary": self._generate_summary(query, business_profile, issues, opportunities)
+
+            # Primary output for Agent 1 (ranking-only)
+            "inferred_location": ranking_data.get("inferred_location", ""),
+            "ranked_results": ranked_results_out,
+
+            # Optional mirror for compatibility if some code expects generic "results"
+            "results": ranked_results_out,
+
+            # Legacy keys preserved (empty by design for Agent 1 after refactor)
+            "competitors": [],
+            "ranking_factors": [],
+            "gaps": [],
+            "issues": [],
+            "critical_issues": [],
+            "high_priority_issues": [],
+            "opportunities": [],
+
+            # Summary (kept for compatibility)
+            "summary": self._generate_summary(query, business_profile, issues=[], opportunities=[]),
+
+            # Notes for debugging/traceability
+            "notes": ranking_data.get("notes", ""),
         }
-        
+
         return analysis_result
-    
+
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
-        """Parse JSON from LLM response, handling markdown code blocks."""
-        # Remove markdown code blocks if present
+        """Parse JSON from LLM response, handling markdown code blocks and stray text."""
+        if not isinstance(response, str):
+            return {}
+
         text = response.strip()
+
+        # Remove markdown code fences if present
         if text.startswith("```"):
             lines = text.split("\n")
-            # Remove first and last lines (```json and ```)
-            lines = [l for l in lines if not l.startswith("```")]
-            text = "\n".join(lines)
-        
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            text = "\n".join(lines).strip()
+
+        # Attempt direct parse
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            # Try to extract JSON from response
-            start = text.find("{")
-            end = text.rfind("}") + 1
-            if start >= 0 and end > start:
-                try:
-                    return json.loads(text[start:end])
-                except:
-                    pass
-            return {}
-    
-    def _generate_summary(self, query: str, business_profile: BusinessProfile,
-                         issues: List[Dict], opportunities: List[Dict]) -> str:
-        """Generate analysis summary."""
-        critical_count = len([i for i in issues if i.get("severity") == "critical"])
-        high_count = len([i for i in issues if i.get("severity") == "high"])
-        
+            pass
+
+        # Attempt to extract first JSON object from mixed text
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start >= 0 and end > start:
+            candidate = text[start:end].strip()
+            try:
+                return json.loads(candidate)
+            except Exception:
+                return {}
+
+        return {}
+
+    def _generate_summary(
+        self,
+        query: str,
+        business_profile: BusinessProfile,
+        issues: List[Dict],
+        opportunities: List[Dict],
+    ) -> str:
+        """Generate a short summary (kept for framework compatibility)."""
+        clean_query = (query or "").strip()
         summary = f"""
-LLM-Powered Analysis for {business_profile.name}:
-- Query: "{query}"
-- Critical issues found: {critical_count}
-- High-priority issues: {high_count}
-- Opportunities identified: {len(opportunities)}
-"""
-        if issues:
-            summary += f"\nTop Issue: {issues[0].get('title', 'N/A')}"
-        if opportunities:
-            summary += f"\nTop Opportunity: {opportunities[0].get('title', 'N/A')}"
-            
-        return summary.strip()
+LLM Ranking Output for {business_profile.name}:
+- Query: "{clean_query}"
+- Mode: ranked_results_only
+- Issues analyzed: 0 (handled by Agent 2/3)
+- Opportunities analyzed: 0 (handled by Agent 2/3)
+""".strip()
+        return summary

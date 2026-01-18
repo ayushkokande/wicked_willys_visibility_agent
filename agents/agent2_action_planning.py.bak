@@ -143,28 +143,17 @@ class Agent2ActionPlanning:
         opportunities = analysis_result.get("opportunities", [])
         seo_analysis = analysis_result.get("seo_analysis", {})
 
-        # Get ranked results from Agent 1
-        ranked_results = analysis_result.get("ranked_results", [])
-        
-        # 1) Try LLM-based ranking explanation if we have an LLM client
-        agent2_report = None
-        if self.llm_client and ranked_results:
-            print("  → Analyzing ranking with LLM...")
-            agent2_report = self.explain_ranked_list(analysis_result, business_profile)
-            if agent2_report:
-                analysis_result["agent2_report"] = agent2_report
-                issues_from_ranking = self._ranking_report_to_issues(agent2_report, business_profile)
-                if issues_from_ranking:
-                    issues.extend(issues_from_ranking)
-                    print(f"  → LLM analysis created {len(issues_from_ranking)} issues")
-        
-        # 2) FALLBACK: If no issues from LLM, create issues directly from ranking
-        if not issues and ranked_results:
-            print("  → Creating issues from ranking (fallback mode)...")
-            issues = self._create_issues_from_ranking(ranked_results, business_profile)
-            print(f"  → Fallback created {len(issues)} issues")
+        # 1) NEW: Explain ranking list (if present) and optionally convert to issues
+        agent2_report = self.explain_ranked_list(analysis_result, business_profile)
+        if agent2_report:
+            analysis_result["agent2_report"] = agent2_report
 
-        # 3) Generate allowed actions from issues/opportunities
+            # Optional: convert report -> issues so your existing mapping generates actions.
+            issues_from_ranking = self._ranking_report_to_issues(agent2_report, business_profile)
+            if issues_from_ranking:
+                issues.extend(issues_from_ranking)
+
+        # 2) Generate allowed actions from issues/opportunities
         actions: List[AllowedAction] = []
 
         for issue in issues:
@@ -471,51 +460,6 @@ class Agent2ActionPlanning:
                 related_issue=issue.get("issue_id")
             ))
 
-        # Low ranking (not in top 3)
-        elif issue_id == "low_ranking":
-            actions.append(AllowedAction(
-                action_id=f"action_{uuid.uuid4().hex[:8]}",
-                action_type=ActionType.GENERATE_CONTENT,
-                title="Optimize Content for Query Relevance",
-                description="Generate keyword-optimized content to improve ranking position",
-                priority=ActionPriority.HIGH,
-                automation_level=AutomationLevel.FULLY_AUTOMATED,
-                estimated_impact="High - Improves relevance signals",
-                difficulty="easy",
-                time_required="15 minutes",
-                reason=issue.get("description"),
-                related_issue=issue.get("issue_id")
-            ))
-            actions.append(AllowedAction(
-                action_id=f"action_{uuid.uuid4().hex[:8]}",
-                action_type=ActionType.GENERATE_REVIEW_RESPONSE,
-                title="Create Review Response Templates",
-                description="Generate professional review response templates to improve engagement",
-                priority=ActionPriority.MEDIUM,
-                automation_level=AutomationLevel.FULLY_AUTOMATED,
-                estimated_impact="Medium - Improves customer engagement signals",
-                difficulty="easy",
-                time_required="10 minutes",
-                reason="Responding to reviews improves ranking signals",
-                related_issue=issue.get("issue_id")
-            ))
-
-        # Maintain ranking (already in top 3)
-        elif issue_id == "maintain_ranking":
-            actions.append(AllowedAction(
-                action_id=f"action_{uuid.uuid4().hex[:8]}",
-                action_type=ActionType.CREATE_BLOG_POST,
-                title="Create Fresh Content",
-                description="Generate fresh blog/social content to maintain ranking momentum",
-                priority=ActionPriority.LOW,
-                automation_level=AutomationLevel.FULLY_AUTOMATED,
-                estimated_impact="Medium - Keeps content fresh",
-                difficulty="easy",
-                time_required="20 minutes",
-                reason=issue.get("description"),
-                related_issue=issue.get("issue_id")
-            ))
-
         # General/fallback - create at least one action
         elif issue_id == "general" or not actions:
             issue_title = issue.get("title", "Visibility Issue")
@@ -641,96 +585,6 @@ class Agent2ActionPlanning:
                 out.append(i)
         return out
 
-    def _create_issues_from_ranking(self, ranked_results: List[Dict[str, Any]], 
-                                     business_profile: BusinessProfile) -> List[Dict[str, Any]]:
-        """
-        Create issues directly from ranking results (fallback when LLM analysis fails).
-        
-        Analyzes whether the target business appears in the ranking and creates
-        appropriate issues based on its position or absence.
-        """
-        issues: List[Dict[str, Any]] = []
-        business_name = getattr(business_profile, 'name', "Wicked Willy's")
-        business_name_lower = business_name.lower()
-        
-        # Check if business is in ranked results
-        wicked_rank = None
-        for result in ranked_results:
-            name = result.get("name", "").lower()
-            if business_name_lower in name or "wicked" in name:
-                wicked_rank = result.get("rank")
-                break
-        
-        if wicked_rank is None:
-            # Business is NOT in the ranked results - this is a critical issue
-            issues.append({
-                "issue_id": "missing_from_ranked",
-                "title": f"{business_name} Missing from Search Results",
-                "severity": "critical",
-                "description": (
-                    f"{business_name} does not appear in the top search results for this query. "
-                    f"This indicates significant gaps in visibility, relevance, or prominence. "
-                    f"Actions needed: optimize GMB, build citations, improve keyword targeting."
-                )
-            })
-            
-            # Add specific issues for common visibility problems
-            issues.append({
-                "issue_id": "low_citations",
-                "title": "Insufficient Local Citations",
-                "severity": "high",
-                "description": (
-                    "Business may be missing from key local directories and citation sources. "
-                    "Need to build presence on Yelp, TripAdvisor, Foursquare, and local directories."
-                )
-            })
-            
-            issues.append({
-                "issue_id": "keyword_optimization",
-                "title": "Keyword Relevance Gap",
-                "severity": "high",
-                "description": (
-                    "Website and GMB profile may not be optimized for the searched keywords. "
-                    "Need to align content with user search intent and local queries."
-                )
-            })
-            
-        elif wicked_rank > 3:
-            # Business is ranked but not in top 3
-            issues.append({
-                "issue_id": "low_ranking",
-                "title": f"{business_name} Ranked #{wicked_rank} - Room for Improvement",
-                "severity": "high",
-                "description": (
-                    f"{business_name} appears at position #{wicked_rank}. "
-                    f"To move into top 3, need to improve reviews, citations, and content relevance."
-                )
-            })
-            
-            issues.append({
-                "issue_id": "low_review_count",
-                "title": "Review Strategy Needed",
-                "severity": "medium",
-                "description": (
-                    "Higher-ranked competitors likely have more or better reviews. "
-                    "Implement a review generation strategy to improve ranking."
-                )
-            })
-            
-        else:
-            # Business is in top 3 - maintenance mode
-            issues.append({
-                "issue_id": "maintain_ranking",
-                "title": f"Maintain #{wicked_rank} Position",
-                "severity": "low",
-                "description": (
-                    f"{business_name} is ranked #{wicked_rank}. "
-                    f"Focus on maintaining and defending this position through consistent optimization."
-                )
-            })
-        
-        return issues
-
     # ----------------------------
     # Helpers: ranked list normalization + parsing
     # ----------------------------
@@ -779,22 +633,18 @@ class Agent2ActionPlanning:
 
     def _call_llm(self, system: str, user: str, temperature: float = 0.2) -> str:
         """
-        Invoke the LLM client using the generate method.
-        
-        Args:
-            system: System prompt
-            user: User prompt/content
-            temperature: Sampling temperature
-            
-        Returns:
-            LLM response text
+        Adapter for whatever LLM client you are using.
+        Update this method once, instead of updating every call site.
+
+        Expected:
+            self.llm_client.complete(system=..., user=..., temperature=...) -> str
         """
-        # Use the generate method which takes (prompt, system_prompt=...)
-        return self.llm_client.generate(
-            prompt=user,
-            system_prompt=system,
-            temperature=temperature
-        )
+        if hasattr(self.llm_client, "complete"):
+            return self.llm_client.complete(system=system, user=user, temperature=temperature)
+        if hasattr(self.llm_client, "chat"):
+            # Example alternate interface
+            return self.llm_client.chat(system=system, user=user, temperature=temperature)
+        raise AttributeError("llm_client must expose a .complete(system, user, temperature) method (or update _call_llm).")
 
     def _safe_json_parse(self, raw: str) -> Optional[Dict[str, Any]]:
         """

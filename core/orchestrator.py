@@ -74,7 +74,8 @@ class VisibilityOrchestrator:
         
         # Agent 3: Execution
         print("\n⚙️  Agent 3: Executing Actions...")
-        execution_result = agent3.execute_actions(action_plan, self.business_profile)
+       # execution_result = agent3.execute_actions(action_plan, self.business_profile)
+       execution_result = agent3.generate_action_plan(action_plan, self.business_profile)
         
         # Compile results
         results = {
