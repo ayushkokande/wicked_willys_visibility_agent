@@ -47,17 +47,19 @@ def get_agent1(use_llm: bool):
             from utils.llm_client import LLMClient
             from agents.agent1_analysis_llm import Agent1AnalysisLLM
             
-            # Check for API keys
-            if os.getenv("ANTHROPIC_API_KEY"):
-                client = LLMClient(provider="anthropic")
-                return Agent1AnalysisLLM(llm_client=client), "anthropic"
-            elif os.getenv("OPENAI_API_KEY"):
+            # Check for API keys - Try OpenAI first (Anthropic may have no credits)
+            if os.getenv("OPENAI_API_KEY"):
                 client = LLMClient(provider="openai")
                 return Agent1AnalysisLLM(llm_client=client), "openai"
+            elif os.getenv("ANTHROPIC_API_KEY"):
+                client = LLMClient(provider="anthropic")
+                return Agent1AnalysisLLM(llm_client=client), "anthropic"
         except Exception as e:
             st.warning(f"LLM not available: {e}. Using mock mode.")
     
-    return Agent1AnalysisLLM(), "mock"
+    # Fallback to mock mode
+    from agents.agent1_analysis import Agent1Analysis
+    return Agent1Analysis(), "mock"
 
 
 def reset_all():
