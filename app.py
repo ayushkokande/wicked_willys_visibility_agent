@@ -196,41 +196,52 @@ def render_step2():
     result = st.session_state.agent1_output
     st.success("✅ Agent 1 Complete!")
     
+    # Get ranked results
+    ranked_results = result.get("ranked_results", [])
+    inferred_location = result.get("inferred_location", "Unknown")
+    
+    # Check if Wicked Willy's is in the results
+    wicked_in_results = any("wicked" in r.get("name", "").lower() for r in ranked_results)
+    wicked_rank = next((r.get("rank") for r in ranked_results if "wicked" in r.get("name", "").lower()), None)
+    
     # Metrics
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Issues Found", len(result.get("issues", [])))
+        st.metric("Results Ranked", len(ranked_results))
     with col2:
-        st.metric("Opportunities", len(result.get("opportunities", [])))
+        st.metric("Location", inferred_location[:20] + "..." if len(inferred_location) > 20 else inferred_location)
     with col3:
-        st.metric("Competitors", len(result.get("competitors", [])))
+        if wicked_in_results:
+            st.metric("Wicked Willy's Rank", f"#{wicked_rank}")
+        else:
+            st.metric("Wicked Willy's Rank", "❌ Not Found")
     
     # Tabs for results
-    tab1, tab2, tab3 = st.tabs(["🔴 Issues", "🟢 Opportunities", "📊 Full Output"])
+    tab1, tab2 = st.tabs(["📊 Ranked Results", "📋 Full Output"])
     
     with tab1:
-        issues = result.get("issues", [])
-        if issues:
-            for issue in issues:
-                severity = issue.get("severity", "medium")
-                icon = "🔴" if severity == "critical" else "🟠" if severity == "high" else "🟡"
-                st.markdown(f"{icon} **{issue.get('title', 'Unknown')}** ({severity})")
-                st.markdown(f"> {issue.get('description', 'No description')[:200]}")
+        if ranked_results:
+            for r in ranked_results:
+                rank = r.get("rank", "?")
+                name = r.get("name", "Unknown")
+                address = r.get("address", "")
+                reason_tokens = r.get("reason_tokens", [])
+                
+                # Highlight Wicked Willy's
+                if "wicked" in name.lower():
+                    st.markdown(f"**#{rank} 🍺 {name}** ⬅️ YOUR BUSINESS")
+                else:
+                    st.markdown(f"**#{rank} {name}**")
+                
+                if address:
+                    st.markdown(f"   📍 {address}")
+                if reason_tokens:
+                    st.markdown(f"   🏷️ {', '.join(reason_tokens)}")
                 st.markdown("---")
         else:
-            st.info("No issues found")
+            st.warning("No ranked results returned from LLM")
     
     with tab2:
-        opportunities = result.get("opportunities", [])
-        if opportunities:
-            for opp in opportunities:
-                st.markdown(f"💡 **{opp.get('title', 'Unknown')}**")
-                st.markdown(f"> {opp.get('description', 'No description')[:200]}")
-                st.markdown("---")
-        else:
-            st.info("No opportunities found")
-    
-    with tab3:
         st.json(result)
     
     # Context passed to Agent 2
@@ -238,8 +249,11 @@ def render_step2():
     st.markdown("### 📤 Context passed to Agent 2:")
     with st.expander("See context", expanded=False):
         context = {
-            "issues": [{"title": i.get("title"), "severity": i.get("severity")} for i in result.get("issues", [])],
-            "opportunities": [{"title": o.get("title")} for o in result.get("opportunities", [])]
+            "query": result.get("query", ""),
+            "inferred_location": inferred_location,
+            "wicked_in_results": wicked_in_results,
+            "wicked_rank": wicked_rank,
+            "ranked_results": [{"rank": r.get("rank"), "name": r.get("name")} for r in ranked_results[:5]]
         }
         st.json(context)
     
@@ -260,23 +274,37 @@ def render_step3():
     """Step 3: Agent 2 Action Planning."""
     st.markdown("## Step 3: Agent 2 - Action Planning")
     
-    # Show input from Agent 1
-    with st.expander("📥 Input from Agent 1", expanded=True):
-        issues = st.session_state.agent1_output.get("issues", [])
-        st.markdown(f"**{len(issues)} issues to address:**")
-        for i in issues[:5]:
-            st.markdown(f"- {i.get('title', 'Unknown')}")
+    # Show input from Agent 1 (ranked results)
+    with st.expander("📥 Input from Agent 1 (Ranked Results)", expanded=True):
+        ranked_results = st.session_state.agent1_output.get("ranked_results", [])
+        inferred_location = st.session_state.agent1_output.get("inferred_location", "Unknown")
+        st.markdown(f"**Location:** {inferred_location}")
+        st.markdown(f"**{len(ranked_results)} ranked results:**")
+        for r in ranked_results[:10]:
+            rank = r.get("rank", "?")
+            name = r.get("name", "Unknown")
+            st.markdown(f"{rank}. **{name}**")
     
     # Run Agent 2 if needed
     if st.session_state.agent2_output is None:
-        with st.spinner("🤖 Agent 2 is planning actions..."):
+        with st.spinner("🤖 Agent 2 is analyzing ranking and planning actions..."):
             try:
-                agent2 = Agent2ActionPlanning()
+                # Pass LLM client to Agent 2 so it can analyze the ranking
+                from utils.llm_client import LLMClient
+                llm_client = None
+                if os.getenv("OPENAI_API_KEY"):
+                    llm_client = LLMClient(provider="openai")
+                elif os.getenv("ANTHROPIC_API_KEY"):
+                    llm_client = LLMClient(provider="anthropic")
+                
+                agent2 = Agent2ActionPlanning(llm_client=llm_client)
                 result = agent2.plan_actions(st.session_state.agent1_output, WICKED_WILLYS_PROFILE)
                 st.session_state.agent2_output = result.dict()
                 st.rerun()
             except Exception as e:
                 st.error(f"Error: {e}")
+                import traceback
+                st.code(traceback.format_exc())
                 return
     
     # Display results
