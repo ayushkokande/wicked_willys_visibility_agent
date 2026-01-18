@@ -209,3 +209,9 @@ Replace mock data in Agent 1 with:
 ## License
 
 This project is designed for educational and demonstration purposes.
+
+
+##
+cd /Users/samprasmanueldsouza/Desktop/wicked_willys_visibility_agent/wicked_willys_visibility_agent
+source venv/bin/activate
+streamlit run app_interactive.py
