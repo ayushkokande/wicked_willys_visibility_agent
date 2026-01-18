@@ -6,7 +6,7 @@ from core.business_profile import BusinessProfile
 import uuid
 
 
-class Agent1Analysis:
+class Agent1AnalysisLLM:
     """
     Agent 1: Discovery & Analysis Agent
     

@@ -32,7 +32,7 @@ def main():
     orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
     
     # Initialize agents
-    agent1 = Agent1Analysis()
+    agent1 = Agent1AnalysisLLM(llm_client=LLMClient())
     agent2 = Agent2ActionPlanning()
     agent3 = Agent3Execution()
     

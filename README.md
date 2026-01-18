@@ -88,13 +88,13 @@ pip install -r requirements.txt
 ```python
 from core.orchestrator import VisibilityOrchestrator
 from core.business_profile import WICKED_WILLYS_PROFILE
-from agents.agent1_analysis import Agent1Analysis
+from agents.agent1_analysis_llm import Agent1AnalysisLLM
 from agents.agent2_action_planning import Agent2ActionPlanning
 from agents.agent3_execution import Agent3Execution
 
 # Initialize
 orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
-agent1 = Agent1Analysis()
+agent1 = Agent1AnalysisLLM()
 agent2 = Agent2ActionPlanning()
 agent3 = Agent3Execution()
 

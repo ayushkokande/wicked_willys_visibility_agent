@@ -50,7 +50,7 @@ def run_mock_mode():
     print("   Using simulated data for demonstration\n")
     
     orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
-    agent1 = Agent1Analysis()
+    agent1 = Agent1AnalysisLLM()
     agent2 = Agent2ActionPlanning()
     agent3 = Agent3Execution()
     

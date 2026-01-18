@@ -57,7 +57,7 @@ def get_agent1(use_llm: bool):
         except Exception as e:
             st.warning(f"LLM not available: {e}. Using mock mode.")
     
-    return Agent1Analysis(), "mock"
+    return Agent1AnalysisLLM(), "mock"
 
 
 def reset_all():
