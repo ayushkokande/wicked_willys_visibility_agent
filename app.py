@@ -18,7 +18,7 @@ st.set_page_config(
 
 # Now import the rest after page config
 from core.business_profile import WICKED_WILLYS_PROFILE
-from agents.agent1_analysis import Agent1Analysis
+from agents.agent1_analysis_llm import Agent1AnalysisLLM
 from agents.agent2_action_planning import Agent2ActionPlanning
 from agents.agent3_execution import Agent3Execution
 from core.allowed_actions import ActionPlan
@@ -37,7 +37,7 @@ def init_session():
     if 'agent3_output' not in st.session_state:
         st.session_state.agent3_output = None
     if 'use_llm' not in st.session_state:
-        st.session_state.use_llm = False
+        st.session_state.use_llm = True
 
 
 def get_agent1(use_llm: bool):

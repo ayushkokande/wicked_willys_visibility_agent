@@ -221,7 +221,7 @@ class Agent2ActionPlanning:
                 reason=opportunity.get("description"),
                 related_issue=opp_id
             ))
-        
+    
         elif opp_id == "citation_building":
             # Already handled by low_citations issue mapping
             pass
