@@ -23,3 +23,6 @@ sqlalchemy>=2.0.0
 # Utilities
 python-dateutil>=2.8.0
 typing-extensions>=4.8.0
+
+# UI
+streamlit>=1.53.1
