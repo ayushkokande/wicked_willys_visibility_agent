@@ -202,7 +202,7 @@ Replace mock data in Agent 1 with:
 
 1. **Integrate LLM APIs:** Connect OpenAI/Anthropic for enhanced analysis
 2. **Add Real Data Sources:** Google Places, Yelp, SEO tools
-3. **Build UI:** Web interface for business owners
+3. **Enhance UI:** More insights, filters, and exports
 4. **Action Tracking:** Database to track action completion over time
 5. **Iterative Improvements:** Track changes and measure impact
 
@@ -211,8 +211,9 @@ Replace mock data in Agent 1 with:
 ### Run the Streamlit UI
 
 ```bash
-cd /Users/samprasmanueldsouza/Desktop/wicked_willys_visibility_agent/wicked_willys_visibility_agent
+python -m venv venv
 source venv/bin/activate
+pip install -r requirements.txt
 streamlit run app.py
 ```
 
@@ -227,6 +228,29 @@ OPENAI_API_KEY=your-key-here
 ```
 
 Then run the app and enable "Use LLM" in the sidebar.
+
+## Deployment
+
+### Streamlit Community Cloud (Recommended)
+1. Push this repo to GitHub.
+2. Create a new Streamlit app and set the entrypoint to `app.py`.
+3. Add secrets for `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`.
+4. Deploy and share the generated URL.
+
+### Docker
+Build and run locally or on any container platform:
+
+```bash
+docker build -t wicked-willys-ui .
+docker run -p 8501:8501 --env-file .env wicked-willys-ui
+```
+
+The container respects `PORT` (defaults to 8501).
+
+### Render / Railway / Fly.io
+- Use the included `Dockerfile`.
+- Ensure the service listens on `0.0.0.0` and port `$PORT`.
+- Add your API keys as environment variables.
 
 ## License
 
