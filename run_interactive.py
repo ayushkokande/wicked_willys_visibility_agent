@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from core.orchestrator import VisibilityOrchestrator
-from core.business_profile import WICKED_WILLYS_PROFILE, BusinessProfile
+from core.business_profile import DEFAULT_PROFILE, BusinessProfile
 from agents.agent1_analysis import Agent1Analysis
 from agents.agent2_action_planning import Agent2ActionPlanning
 from agents.agent3_execution import Agent3Execution
@@ -20,7 +20,7 @@ def print_banner():
     """Print welcome banner."""
     print("""
 ╔══════════════════════════════════════════════════════════════════╗
-║   🍺 Wicked Willy's Visibility Optimization System 🍺            ║
+║   📍 Business Visibility Optimization System 📍                  ║
 ║   Three-Agent Architecture for Business Discoverability          ║
 ╚══════════════════════════════════════════════════════════════════╝
     """)
@@ -37,7 +37,7 @@ Commands:
   exit     - Exit the program
 
 Example Queries:
-  • "Why don't I show up for 'bar near Bleecker Street'?"
+  • "Why don't I show up for '<your target keyword>'?"
   • "How can I improve my local search ranking?"
   • "What are my competitors doing better?"
   • "How do I get more reviews?"
@@ -49,8 +49,8 @@ def run_mock_mode():
     print("\n🔧 Running in MOCK MODE (no API keys required)")
     print("   Using simulated data for demonstration\n")
     
-    orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
-    agent1 = Agent1AnalysisLLM()
+    orchestrator = VisibilityOrchestrator(business_profile=DEFAULT_PROFILE)
+    agent1 = Agent1Analysis()
     agent2 = Agent2ActionPlanning()
     agent3 = Agent3Execution()
     
@@ -67,7 +67,7 @@ def run_llm_mode(provider: str = "openai"):
     
     llm_client = LLMClient(provider=provider)
     
-    orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
+    orchestrator = VisibilityOrchestrator(business_profile=DEFAULT_PROFILE)
     agent1 = Agent1AnalysisLLM(llm_client=llm_client)
     agent2 = Agent2ActionPlanning()  # Planning logic is rule-based
     agent3 = Agent3Execution()  # Execution is rule-based
@@ -169,13 +169,13 @@ def main():
     # Interactive loop
     while True:
         try:
-            user_input = input("\n🍺 Wicked Willy's > ").strip()
+            user_input = input(f"\n📍 {orchestrator.business_profile.name} > ").strip()
             
             if not user_input:
                 continue
             
             if user_input.lower() == "exit":
-                print("\nGoodbye! 🍺")
+                print("\nGoodbye!")
                 break
             
             if user_input.lower() == "help":
@@ -208,7 +208,7 @@ def main():
             display_results(results)
             
         except KeyboardInterrupt:
-            print("\n\nGoodbye! 🍺")
+            print("\n\nGoodbye!")
             break
         except Exception as e:
             print(f"\n❌ Error: {e}")

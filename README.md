@@ -1,4 +1,4 @@
-# Wicked Willy's Visibility Optimization System
+# Business Visibility Optimization System
 
 A multi-agent system that solves business discoverability problems by analyzing competitors, identifying SEO issues, planning actionable improvements, and executing optimizations.
 
@@ -87,19 +87,19 @@ pip install -r requirements.txt
 
 ```python
 from core.orchestrator import VisibilityOrchestrator
-from core.business_profile import WICKED_WILLYS_PROFILE
+from core.business_profile import DEFAULT_PROFILE, BusinessProfile
 from agents.agent1_analysis_llm import Agent1AnalysisLLM
 from agents.agent2_action_planning import Agent2ActionPlanning
 from agents.agent3_execution import Agent3Execution
 
-# Initialize
-orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
+# Initialize (use DEFAULT_PROFILE or build your own BusinessProfile)
+orchestrator = VisibilityOrchestrator(business_profile=DEFAULT_PROFILE)
 agent1 = Agent1AnalysisLLM()
 agent2 = Agent2ActionPlanning()
 agent3 = Agent3Execution()
 
 # Process query
-query = "Why don't I show up when people search for 'bar near Bleecker Street'?"
+query = "Why don't I show up when people search for 'bar near Main Street'?"
 results = orchestrator.process_query(query, agent1, agent2, agent3)
 
 # Access results
@@ -117,7 +117,7 @@ python main.py
 ## Project Structure
 
 ```
-wicked_willys_visibility_agent/
+generative_seo/
 ├── agents/
 │   ├── agent1_analysis.py      # Discovery & Analysis Agent
 │   ├── agent2_action_planning.py  # Action Planning Agent
@@ -133,21 +133,21 @@ wicked_willys_visibility_agent/
 
 ## Business Profile
 
-The system is configured for **Wicked Willy's** at 149 Bleecker Street, but can be adapted for any business.
+The system uses a configurable default profile (`DEFAULT_PROFILE` in `core/business_profile.py`). Override it with environment variables — `BUSINESS_NAME`, `BUSINESS_ADDRESS`, `BUSINESS_CATEGORY`, `BUSINESS_SECONDARY_CATEGORIES`, `BUSINESS_TARGET_KEYWORDS`, `BUSINESS_WEBSITE`, `BUSINESS_PHONE` — or construct your own `BusinessProfile`.
 
-Default profile includes:
+Profile includes:
 - Business name and address
 - Target keywords
-- Categories (Bar, Restaurant, Nightlife)
+- Categories
 - SEO metrics (to be populated)
 
 ## Example Query Flow
 
-**Query:** "Why don't I show up when people search for 'bar near Bleecker Street'?"
+**Query:** "Why don't I show up when people search for 'bar near Main Street'?"
 
 **Agent 1 Response:**
-- Found 3 competing bars
-- Top competitor: Greenwich Village Tavern (456 reviews, 4.7 rating)
+- Found 3 competing businesses
+- Top competitor: Competitor C (456 reviews, 4.7 rating)
 - Issues identified:
   - Missing Google My Business profile (critical)
   - Low review count (high)
@@ -211,7 +211,6 @@ Replace mock data in Agent 1 with:
 ### Run the Streamlit UI
 
 ```bash
-cd /Users/samprasmanueldsouza/Desktop/wicked_willys_visibility_agent/wicked_willys_visibility_agent
 source venv/bin/activate
 streamlit run app.py
 ```

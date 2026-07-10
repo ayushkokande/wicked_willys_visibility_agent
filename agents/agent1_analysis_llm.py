@@ -36,7 +36,7 @@ import json
 RANKING_SYSTEM_PROMPT = """You are Agent 1: Local Search Results Ranker (SERP Generator).
 
 Task:
-Given a user query (e.g., “good bars near NYU”), return a ranked list of the TOP local search results a user would expect.
+Given a user query (e.g., “good coffee shops near the university”), return a ranked list of the TOP local search results a user would expect.
 
 Critical rules:
 - You MUST return 5–10 ranked results unless the query is impossible or location is undefined.
@@ -44,7 +44,7 @@ Critical rules:
 - If you include the target business, include it only if it genuinely fits the query and location. Rank it wherever it naturally belongs.
 - Output MUST be valid JSON only (no markdown, no prose).
 - Do NOT include numeric claims (ratings, review counts, “#1 in NYC”, etc.).
-- inferred_location must be coarse (e.g., “NYU / Washington Square Park, Manhattan, NYC”) unless the user explicitly gave an address.
+- inferred_location must be coarse (e.g., a neighborhood, landmark, or city district) unless the user explicitly gave an address.
 
 """
 
@@ -126,9 +126,9 @@ Return valid JSON only in this exact schema:
 Constraints:
 - Up to 10 results max.
 - rank must start at 1 and be consecutive.
-- reason_tokens must be <= 3 short phrases derived from the query text only (e.g., ["near NYU", "bar"]).
+- reason_tokens must be <= 3 short phrases derived from the query text only (e.g., ["near downtown", "bar"]).
 - Do NOT include ratings/review counts or other numeric claims.
-- inferred_location must be coarse (e.g., "NYU / Washington Square Park, Manhattan, NYC"), not a street address unless the user provided one.
+- inferred_location must be coarse (e.g., a neighborhood, landmark, or city district), not a street address unless the user provided one.
 """.strip()
 
         # Default / fallback outputs

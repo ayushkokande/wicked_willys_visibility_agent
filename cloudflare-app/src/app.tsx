@@ -198,10 +198,10 @@ function ToolPartView({
 // ── Suggested prompts ────────────────────────────────────────────────
 
 const SUGGESTED_PROMPTS = [
-  "My business is Wicked Willy's at 149 Bleecker St, New York, NY 10012. We're a bar.",
-  "Why don't I show up when people search 'best bars near Bleecker Street'?",
+  "My business is [name] at [address]. We're a [category].",
+  "Why don't I show up when people search '[your target keyword]'?",
   "Generate JSON-LD schema markup for my business",
-  "What directories should I list my bar on?"
+  "What directories should I list my business on?"
 ];
 
 // ── Main chat ────────────────────────────────────────────────────────

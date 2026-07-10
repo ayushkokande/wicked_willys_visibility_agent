@@ -2,11 +2,11 @@
 
 ## Overview
 
-This document explains how the three-agent system optimizes business visibility for Wicked Willy's (and similar businesses) by solving discoverability problems.
+This document explains how the three-agent system optimizes business visibility for a target business by solving discoverability problems.
 
 ## The Discoverability Problem
 
-**The Challenge:** When someone searches for "bar near Bleecker Street" or "best bar in Greenwich Village," why doesn't Wicked Willy's appear in the results?
+**The Challenge:** When someone searches for "bar near Main Street" or "best bar downtown," why doesn't the business appear in the results?
 
 **The Solution:** Our three-agent system analyzes the problem, identifies allowed actions, and executes improvements automatically.
 
@@ -16,7 +16,7 @@ This document explains how the three-agent system optimizes business visibility 
 
 ### 1. Business Makes a Query
 
-**Example Query:** *"Why don't I show up when people search for 'bar near Bleecker Street'?"*
+**Example Query:** *"Why don't I show up when people search for 'bar near Main Street'?"*
 
 The business owner asks a natural language question about their visibility problems.
 
@@ -24,15 +24,15 @@ The business owner asks a natural language question about their visibility probl
 
 ### 2. Agent 1: Discovery & Analysis Agent
 
-**Purpose:** Find out what businesses match the query and understand why Wicked Willy's isn't ranking well.
+**Purpose:** Find out what businesses match the query and understand why the target business isn't ranking well.
 
 **What Agent 1 Does:**
 
 #### a) **Competitor Discovery**
-- Searches for businesses that match the query (e.g., "bar near Bleecker Street")
+- Searches for businesses that match the query (e.g., "bar near Main Street")
 - Finds 3-5 top-ranking competitors in the area
 - Collects competitor data:
-  - Review counts (e.g., 456 reviews vs Wicked Willy's 50)
+  - Review counts (e.g., 456 reviews vs the target business's 50)
   - Google My Business presence
   - Website optimization
   - Local citations
@@ -57,13 +57,13 @@ Agent 1 identifies specific problems:
    - Impact: Business is invisible in local search
 
 2. **Low Review Count** (HIGH PRIORITY)
-   - Wicked Willy's: 50 reviews
+   - Target business: 50 reviews
    - Top competitor: 456 reviews
    - Impact: Significantly reduces local search visibility
 
 3. **Suboptimal Keyword Usage** (MEDIUM)
    - Target keywords not in business listings
-   - Missing "bar near Bleecker Street" optimization
+   - Missing target-keyword optimization
    - Impact: Reduced relevance for search queries
 
 4. **Low Citation Count** (MEDIUM)
@@ -159,7 +159,7 @@ Agent 3 executes fully automated actions:
 **Example: Generate GMB Description**
 - Analyzes target keywords
 - Creates SEO-optimized business description
-- Includes location keywords ("Bleecker Street", "Greenwich Village")
+- Includes location keywords (street, neighborhood)
 - Generates compelling copy
 
 **Example: Create Citation List**
@@ -260,7 +260,7 @@ Query 3 → ...
 
 **Example Flow:**
 
-**Query 1:** "Why don't I show up for 'bar near Bleecker Street'?"
+**Query 1:** "Why don't I show up for 'bar near Main Street'?"
 - **Result:** Missing GMB, low citations
 - **Actions:** GMB description generated, citation list created
 - **Status:** GMB setup (manual) pending
@@ -270,7 +270,7 @@ Query 3 → ...
 - **Result:** Review generation strategy needed
 - **Actions:** Review templates generated, campaign strategy provided
 
-**Query 3:** "Why am I not ranking for 'best bar in Greenwich Village'?"
+**Query 3:** "Why am I not ranking for 'best bar downtown'?"
 - **Context:** GMB set up, reviews improving
 - **Result:** Content marketing needed, competitor has strong blog presence
 - **Actions:** Blog post generated, content calendar created
@@ -320,7 +320,7 @@ Query 3 → ...
 - Schema markup created ✓
 - Citation list with 20+ directories ✓
 - Review templates generated ✓
-- Blog post about "best bars on Bleecker Street" ✓
+- Blog post about "best <category> in <neighborhood>" ✓
 
 **After System (Manual Actions - with guidance):**
 - Google My Business profile set up ✓

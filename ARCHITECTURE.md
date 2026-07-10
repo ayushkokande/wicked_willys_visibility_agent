@@ -1,8 +1,8 @@
-# Wicked Willy's Visibility Optimization System - Architecture
+# Business Visibility Optimization System - Architecture
 
 ## Overview
 
-This system uses a multi-agent architecture to solve business discoverability problems. The system helps local businesses like "Wicked Willy's" improve their online visibility by analyzing competitors, understanding ranking issues, determining actionable steps, and executing improvements.
+This system uses a multi-agent architecture to solve business discoverability problems. The system helps local businesses improve their online visibility by analyzing competitors, understanding ranking issues, determining actionable steps, and executing improvements.
 
 ## System Flow
 
@@ -16,10 +16,10 @@ Business Query → Agent 1 (Analysis) → Agent 2 (Action Planning) → Agent 3 
 **Purpose:** Analyzes competitors and identifies ranking/SEO issues
 
 **Responsibilities:**
-- Receive business query (e.g., "restaurants near me", "best bar in Greenwich Village")
+- Receive business query (e.g., "restaurants near me", "best bar downtown")
 - Search for businesses matching query requirements
 - Analyze ranking factors (SEO, reviews, listings, social presence)
-- Diagnose why "Wicked Willy's" is not ranking well
+- Diagnose why the target business is not ranking well
 - Generate detailed analysis report with rankings and reasons
 
 **Capabilities:**
@@ -33,7 +33,7 @@ Business Query → Agent 1 (Analysis) → Agent 2 (Action Planning) → Agent 3 
 **Output:** Structured analysis with:
 - Ranked list of competing businesses
 - Ranking explanation for each
-- Specific issues identified for Wicked Willy's
+- Specific issues identified for the target business
 - SEO gap analysis
 - Missing opportunities
 
@@ -143,7 +143,7 @@ Business Query → Agent 1 (Analysis) → Agent 2 (Action Planning) → Agent 3 
    ↓
 2. Agent 1: Analysis
    - Searches competitors
-   - Analyzes Wicked Willy's current state
+   - Analyzes the target business's current state
    - Generates diagnostic report
    ↓
 3. Agent 2: Action Planning
@@ -166,7 +166,7 @@ Business Query → Agent 1 (Analysis) → Agent 2 (Action Planning) → Agent 3 
 ## Implementation Structure
 
 ```
-wicked_willys_visibility_agent/
+generative_seo/
 ├── agents/
 │   ├── agent1_analysis.py      # Discovery & Analysis Agent
 │   ├── agent2_action_planning.py  # Action Planning Agent
@@ -196,12 +196,12 @@ wicked_willys_visibility_agent/
 
 ## Example Query Flow
 
-**Query:** "Why don't I show up when people search for 'bar near Bleecker Street'?"
+**Query:** "Why don't I show up when people search for 'bar near Main Street'?"
 
 **Agent 1 Response:**
 - Found 15 competing bars in the area
 - Top 3 competitors: [list with reasons]
-- Wicked Willy's issues:
+- Target business issues:
   - Missing Google My Business optimization
   - Weak keyword usage on website
   - No local citations
@@ -211,7 +211,7 @@ wicked_willys_visibility_agent/
 - Allowed actions:
   1. Generate optimized GMB description (automated)
   2. Create local citation list (automated)
-  3. Generate blog post about "best bars on Bleecker" (automated)
+  3. Generate blog post about "best <category> in <neighborhood>" (automated)
   4. Update GMB profile (manual - requires business verification)
   5. Submit to citation sites (manual - requires accounts)
 

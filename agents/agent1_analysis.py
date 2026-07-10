@@ -6,10 +6,10 @@ from core.business_profile import BusinessProfile
 import uuid
 
 
-class Agent1AnalysisLLM:
+class Agent1Analysis:
     """
-    Agent 1: Discovery & Analysis Agent
-    
+    Agent 1: Discovery & Analysis Agent (mock mode, no LLM required)
+
     Responsibilities:
     - Find businesses matching query requirements
     - Analyze ranking factors
@@ -31,7 +31,7 @@ class Agent1AnalysisLLM:
         Perform comprehensive analysis based on business query.
         
         Args:
-            query: Business query (e.g., "bar near Bleecker Street")
+            query: Business query (e.g., "bar near Main Street")
             business_profile: The business being optimized
             
         Returns:
@@ -96,38 +96,39 @@ class Agent1AnalysisLLM:
     def _discover_competitors(self, query: str, business_profile: BusinessProfile) -> List[Dict[str, Any]]:
         """Discover businesses that match the query."""
         # Mock competitor data - In production, this would use Google Places API, Yelp API, etc.
+        category = business_profile.primary_category or "Business"
         competitors = [
             {
-                "name": "The Corner Bar",
-                "address": "145 Bleecker Street, New York, NY",
+                "name": f"Competitor A ({category})",
+                "address": "Nearby address 1",
                 "distance": "0.1 miles",
                 "rating": 4.5,
                 "review_count": 342,
-                "categories": ["Bar", "American", "Nightlife"],
+                "categories": [category],
                 "has_gmb": True,
                 "has_website": True,
                 "google_reviews": 340,
                 "yelp_reviews": 28
             },
             {
-                "name": "Bleecker Street Pub",
-                "address": "160 Bleecker Street, New York, NY",
+                "name": f"Competitor B ({category})",
+                "address": "Nearby address 2",
                 "distance": "0.2 miles",
                 "rating": 4.3,
                 "review_count": 289,
-                "categories": ["Bar", "Pub", "American"],
+                "categories": [category],
                 "has_gmb": True,
                 "has_website": True,
                 "google_reviews": 285,
                 "yelp_reviews": 42
             },
             {
-                "name": "Greenwich Village Tavern",
-                "address": "139 Bleecker Street, New York, NY",
+                "name": f"Competitor C ({category})",
+                "address": "Nearby address 3",
                 "distance": "0.1 miles",
                 "rating": 4.7,
                 "review_count": 456,
-                "categories": ["Bar", "Restaurant", "Nightlife"],
+                "categories": [category],
                 "has_gmb": True,
                 "has_website": True,
                 "google_reviews": 450,
@@ -213,7 +214,7 @@ class Agent1AnalysisLLM:
                 "title": "Suboptimal Keyword Usage",
                 "description": "Target keywords not effectively used in business listings",
                 "severity": "medium",
-                "impact": "Reduces relevance for search queries like 'bar near Bleecker Street'",
+                "impact": f"Reduces relevance for search queries like '{query}'",
                 "evidence": f"Query keywords not prominent in current profile"
             })
             
@@ -284,7 +285,11 @@ class Agent1AnalysisLLM:
         opportunities.append({
             "opportunity_id": "content_marketing",
             "title": "Local Content Marketing",
-            "description": "Create blog content about 'best bars on Bleecker Street' and local area",
+            "description": (
+                f"Create blog content about "
+                f"'{business_profile.target_keywords[0] if business_profile.target_keywords else 'the local area'}' "
+                f"and the surrounding neighborhood"
+            ),
             "potential_impact": "medium",
             "effort": "medium",
             "reason": "Content helps with keyword targeting and link building"

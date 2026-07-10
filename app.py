@@ -1,4 +1,4 @@
-"""Streamlit UI for Wicked Willy's Visibility Agent - Step-by-Step Flow."""
+"""Streamlit UI for the Business Visibility Agent - Step-by-Step Flow."""
 
 import streamlit as st
 import os
@@ -11,13 +11,13 @@ load_dotenv()
 
 # Page config - MUST be first Streamlit command
 st.set_page_config(
-    page_title="Wicked Willy's Visibility Agent",
-    page_icon="🍺",
+    page_title="Business Visibility Agent",
+    page_icon="📍",
     layout="wide"
 )
 
 # Now import the rest after page config
-from core.business_profile import WICKED_WILLYS_PROFILE
+from core.business_profile import DEFAULT_PROFILE
 from agents.agent1_analysis_llm import Agent1AnalysisLLM
 from agents.agent2_action_planning import Agent2ActionPlanning
 from agents.agent3_execution import Agent3Execution
@@ -76,7 +76,7 @@ def main():
     init_session()
     
     # Header
-    st.markdown("# 🍺 Wicked Willy's Visibility Agent")
+    st.markdown(f"# 📍 {DEFAULT_PROFILE.name} Visibility Agent")
     st.markdown("**Three-Agent System for Business Discoverability**")
     st.markdown("---")
     
@@ -100,9 +100,9 @@ def main():
         
         st.markdown("---")
         st.markdown("## 📍 Business Profile")
-        st.markdown(f"**{WICKED_WILLYS_PROFILE.name}**")
-        st.markdown(f"📍 {WICKED_WILLYS_PROFILE.address}")
-        st.markdown(f"🏷️ {WICKED_WILLYS_PROFILE.primary_category}")
+        st.markdown(f"**{DEFAULT_PROFILE.name}**")
+        st.markdown(f"📍 {DEFAULT_PROFILE.address}")
+        st.markdown(f"🏷️ {DEFAULT_PROFILE.primary_category}")
         
         st.markdown("---")
         
@@ -139,19 +139,25 @@ def render_step1():
     
     st.markdown("Ask about your business visibility:")
     
+    example_keyword = (
+        DEFAULT_PROFILE.target_keywords[0]
+        if DEFAULT_PROFILE.target_keywords
+        else f"{DEFAULT_PROFILE.primary_category or 'business'} near me"
+    )
+
     query = st.text_area(
         "Your question:",
-        placeholder="Why don't I show up when people search for 'bar near Bleecker Street'?",
+        placeholder=f"Why don't I show up when people search for '{example_keyword}'?",
         height=100,
         key="query_input"
     )
-    
+
     st.markdown("**Quick examples:**")
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
-        if st.button("Bar near Bleecker Street", use_container_width=True):
-            query = "Why don't I show up when people search for 'bar near Bleecker Street'?"
+        if st.button(example_keyword.title(), use_container_width=True):
+            query = f"Why don't I show up when people search for '{example_keyword}'?"
     with col2:
         if st.button("Improve local ranking", use_container_width=True):
             query = "How can I improve my local search ranking?"
@@ -174,7 +180,7 @@ def render_step2():
     # Show input
     with st.expander("📥 Input to Agent 1", expanded=True):
         st.markdown(f"**Query:** {st.session_state.query}")
-        st.markdown(f"**Business:** {WICKED_WILLYS_PROFILE.name}")
+        st.markdown(f"**Business:** {DEFAULT_PROFILE.name}")
     
     # Run Agent 1 if needed
     if st.session_state.agent1_output is None:
@@ -182,7 +188,7 @@ def render_step2():
             try:
                 agent1, mode = get_agent1(st.session_state.use_llm)
                 st.info(f"Using: {mode.upper()} mode")
-                result = agent1.analyze(st.session_state.query, WICKED_WILLYS_PROFILE)
+                result = agent1.analyze(st.session_state.query, DEFAULT_PROFILE)
                 st.session_state.agent1_output = result
                 st.rerun()
             except Exception as e:
@@ -200,9 +206,10 @@ def render_step2():
     ranked_results = result.get("ranked_results", [])
     inferred_location = result.get("inferred_location", "Unknown")
     
-    # Check if Wicked Willy's is in the results
-    wicked_in_results = any("wicked" in r.get("name", "").lower() for r in ranked_results)
-    wicked_rank = next((r.get("rank") for r in ranked_results if "wicked" in r.get("name", "").lower()), None)
+    # Check if the target business is in the results
+    business_name_lower = DEFAULT_PROFILE.name.lower()
+    business_in_results = any(business_name_lower in r.get("name", "").lower() for r in ranked_results)
+    business_rank = next((r.get("rank") for r in ranked_results if business_name_lower in r.get("name", "").lower()), None)
     
     # Metrics
     col1, col2, col3 = st.columns(3)
@@ -211,10 +218,10 @@ def render_step2():
     with col2:
         st.metric("Location", inferred_location[:20] + "..." if len(inferred_location) > 20 else inferred_location)
     with col3:
-        if wicked_in_results:
-            st.metric("Wicked Willy's Rank", f"#{wicked_rank}")
+        if business_in_results:
+            st.metric(f"{DEFAULT_PROFILE.name} Rank", f"#{business_rank}")
         else:
-            st.metric("Wicked Willy's Rank", "❌ Not Found")
+            st.metric(f"{DEFAULT_PROFILE.name} Rank", "❌ Not Found")
     
     # Tabs for results
     tab1, tab2 = st.tabs(["📊 Ranked Results", "📋 Full Output"])
@@ -227,9 +234,9 @@ def render_step2():
                 address = r.get("address", "")
                 reason_tokens = r.get("reason_tokens", [])
                 
-                # Highlight Wicked Willy's
-                if "wicked" in name.lower():
-                    st.markdown(f"**#{rank} 🍺 {name}** ⬅️ YOUR BUSINESS")
+                # Highlight the target business
+                if business_name_lower in name.lower():
+                    st.markdown(f"**#{rank} 📍 {name}** ⬅️ YOUR BUSINESS")
                 else:
                     st.markdown(f"**#{rank} {name}**")
                 
@@ -251,8 +258,8 @@ def render_step2():
         context = {
             "query": result.get("query", ""),
             "inferred_location": inferred_location,
-            "wicked_in_results": wicked_in_results,
-            "wicked_rank": wicked_rank,
+            "business_in_results": business_in_results,
+            "business_rank": business_rank,
             "ranked_results": [{"rank": r.get("rank"), "name": r.get("name")} for r in ranked_results[:5]]
         }
         st.json(context)
@@ -298,7 +305,7 @@ def render_step3():
                     llm_client = LLMClient(provider="anthropic")
                 
                 agent2 = Agent2ActionPlanning(llm_client=llm_client)
-                result = agent2.plan_actions(st.session_state.agent1_output, WICKED_WILLYS_PROFILE)
+                result = agent2.plan_actions(st.session_state.agent1_output, DEFAULT_PROFILE)
                 st.session_state.agent2_output = result.dict()
                 st.rerun()
             except Exception as e:
@@ -393,7 +400,7 @@ def render_step4():
             try:
                 agent3 = Agent3Execution()
                 action_plan = ActionPlan(**st.session_state.agent2_output)
-                result = agent3.execute_actions(action_plan, WICKED_WILLYS_PROFILE)
+                result = agent3.execute_actions(action_plan, DEFAULT_PROFILE)
                 st.session_state.agent3_output = result
                 st.rerun()
             except Exception as e:

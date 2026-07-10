@@ -1,8 +1,8 @@
-"""Main entry point for Wicked Willy's Visibility Optimization System."""
+"""Main entry point for the Business Visibility Optimization System."""
 
 from typing import Any
 from core.orchestrator import VisibilityOrchestrator
-from core.business_profile import WICKED_WILLYS_PROFILE
+from core.business_profile import DEFAULT_PROFILE
 from agents.agent1_analysis import Agent1Analysis
 from agents.agent2_action_planning import Agent2ActionPlanning
 from agents.agent3_execution import Agent3Execution
@@ -23,24 +23,26 @@ def main():
     
     print("""
 ╔════════════════════════════════════════════════════════════╗
-║   Wicked Willy's Visibility Optimization System           ║
+║   Business Visibility Optimization System                 ║
 ║   Three-Agent Architecture for Business Discoverability   ║
 ╚════════════════════════════════════════════════════════════╝
     """)
-    
+
     # Initialize system
-    orchestrator = VisibilityOrchestrator(business_profile=WICKED_WILLYS_PROFILE)
-    
+    orchestrator = VisibilityOrchestrator(business_profile=DEFAULT_PROFILE)
+
     # Initialize agents
-    agent1 = Agent1AnalysisLLM(llm_client=LLMClient())
+    agent1 = Agent1Analysis()
     agent2 = Agent2ActionPlanning()
     agent3 = Agent3Execution()
-    
+
     # Example queries
+    primary_keyword = DEFAULT_PROFILE.target_keywords[0] if DEFAULT_PROFILE.target_keywords else "business near me"
+    secondary_keyword = DEFAULT_PROFILE.target_keywords[-1] if DEFAULT_PROFILE.target_keywords else "best local business"
     example_queries = [
-        "Why don't I show up when people search for 'bar near Bleecker Street'?",
+        f"Why don't I show up when people search for '{primary_keyword}'?",
         "What can I do to rank higher in local search results?",
-        "How do I improve my visibility for 'best bar in Greenwich Village'?"
+        f"How do I improve my visibility for '{secondary_keyword}'?"
     ]
     
     print("Example queries you can ask:")

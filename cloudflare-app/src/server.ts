@@ -224,7 +224,7 @@ export class ChatAgent extends AIChatAgent<Env, SEOAgentState> {
             query: z
               .string()
               .describe(
-                "The search query to analyze, e.g. 'best bars near Bleecker Street'"
+                "The search query to analyze, e.g. 'best coffee shops near Main Street'"
               )
           }),
           needsApproval: async () => true,

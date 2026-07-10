@@ -8,7 +8,7 @@ Enhancement:
   converts those deltas into issues so your existing action mapping can fire.
 
 Design goals:
-- Wicked Willy's–aware context (Brand/Social/Earned buckets)
+- Brand-aware context (Brand/Social/Earned buckets)
 - No-synthetic-data behavior: if evidence is missing, request evidence via queries
 - Structured JSON output for deterministic downstream usage
 """
@@ -30,15 +30,15 @@ import re
 # ----------------------------
 
 AGENT2_RANKING_AUDIT_SYSTEM_PROMPT = """
-You are Agent 2: Wicked Willy's Visibility Explainer & Evidence Planner.
+You are Agent 2: Business Visibility Explainer & Evidence Planner.
 
 Mission:
-- Explain why Wicked Willy's is ranked low or missing for a local discovery query.
+- Explain why the target business (see brand_context) is ranked low or missing for a local discovery query.
 - Validate the ranked list using ONLY verifiable evidence.
 - Produce an evidence-backed diagnosis and a plan to collect missing evidence.
 
 Evidence buckets (must be used explicitly):
-1) Brand: official Wicked Willy's site and owned properties (e.g., wickedwillys.com).
+1) Brand: the target business's official site and owned properties.
 2) Social: social/UGC platforms (e.g., Instagram, Reddit, YouTube).
 3) Earned: independent media/review/comparison/editorial sources.
 
@@ -52,13 +52,13 @@ Hard rules:
 What you will receive:
 - query
 - ranked results from Agent 1 (names + optional metadata)
-- brand context for Wicked Willy's
+- brand context for the target business
 
 What you must output:
 - ranking_explanation (global + pairwise for top results)
-- deltas_vs_top (Wicked Willy's vs top competitor) with evidence needs
+- deltas_vs_top (target business vs top competitor) with evidence needs
 - evidence_plan (queries grouped by bucket)
-- action_hypotheses (what likely helps Wicked Willy's improve)
+- action_hypotheses (what likely helps the target business improve)
 - confidence (1-5)
 """.strip()
 
@@ -67,12 +67,12 @@ What you must output:
 # (If you prefer, move this schema to core/types.py and validate with Pydantic.)
 AGENT2_RANKING_AUDIT_SCHEMA = {
     "type": "object",
-    "required": ["query", "wicked_present", "wicked_rank", "ranking_explanation",
+    "required": ["query", "business_present", "business_rank", "ranking_explanation",
                  "deltas_vs_top", "evidence_plan", "action_hypotheses", "confidence"],
     "properties": {
         "query": {"type": "string"},
-        "wicked_present": {"type": "boolean"},
-        "wicked_rank": {"type": ["integer", "null"]},
+        "business_present": {"type": "boolean"},
+        "business_rank": {"type": ["integer", "null"]},
         "ranking_explanation": {
             "type": "object",
             "required": ["global_reasons", "pairwise"],
@@ -220,8 +220,8 @@ class Agent2ActionPlanning:
         if not ranked:
             return None
 
-        # Build Wicked Willy's context pack (brand-first)
-        brand_name = getattr(business_profile, "name", "Wicked Willy's")
+        # Build brand context pack (brand-first)
+        brand_name = getattr(business_profile, "name", "the business")
         brand_site = getattr(business_profile, "website", None) or getattr(business_profile, "site", None)
         social_profiles = getattr(business_profile, "social_profiles", {}) or {}
         target_keywords = getattr(business_profile, "target_keywords", []) or []
@@ -230,8 +230,8 @@ class Agent2ActionPlanning:
         # Normalize ranked list so the LLM has consistent fields
         ranked_compact = self._normalize_ranked_list(ranked)
 
-        # Identify Wicked presence quickly (name match heuristic)
-        wicked_present, wicked_rank = self._find_wicked_in_ranked(ranked_compact, brand_name)
+        # Identify target business presence quickly (name match heuristic)
+        business_present, business_rank = self._find_business_in_ranked(ranked_compact, brand_name)
 
         payload = {
             "query": query,
@@ -254,8 +254,8 @@ class Agent2ActionPlanning:
                 }
             },
             "known": {
-                "wicked_present": wicked_present,
-                "wicked_rank": wicked_rank
+                "business_present": business_present,
+                "business_rank": business_rank
             },
             "schema": AGENT2_RANKING_AUDIT_SCHEMA
         }
@@ -272,8 +272,8 @@ class Agent2ActionPlanning:
 
         # Ensure the minimal keys exist; fill a couple of safe defaults if needed
         report.setdefault("query", query)
-        report.setdefault("wicked_present", wicked_present)
-        report.setdefault("wicked_rank", wicked_rank)
+        report.setdefault("business_present", business_present)
+        report.setdefault("business_rank", business_rank)
         report.setdefault("confidence", 3)
         return report
 
@@ -423,7 +423,7 @@ class Agent2ActionPlanning:
                 prerequisites=[actions[-1].action_id if actions else None]
             ))
 
-        # NEW: If Wicked is missing from the ranked list, force foundational visibility work
+        # NEW: If the business is missing from the ranked list, force foundational visibility work
         elif issue_id == "missing_from_ranked":
             # This issue is produced by _ranking_report_to_issues().
             # We map it to a mix of trust/prominence/relevance actions.
@@ -431,7 +431,7 @@ class Agent2ActionPlanning:
                 action_id=f"action_{uuid.uuid4().hex[:8]}",
                 action_type=ActionType.GENERATE_CONTENT,
                 title="Generate Query-Aligned Brand Copy",
-                description="Generate website/GMB copy that explicitly aligns Wicked Willy's with the query intent (e.g., 'bar near NYU / Washington Square Park')",
+                description=f"Generate website/GMB copy that explicitly aligns {business_profile.name} with the query intent (e.g., matching target keywords like nearby landmarks or neighborhoods)",
                 priority=ActionPriority.HIGH,
                 automation_level=AutomationLevel.FULLY_AUTOMATED,
                 estimated_impact="High - Improves relevance signals for LLM + local search",
@@ -601,10 +601,10 @@ class Agent2ActionPlanning:
         _map_issue_to_actions can consume.
         """
         issues: List[Dict[str, Any]] = []
-        wicked_present = bool(report.get("wicked_present", False))
+        business_present = bool(report.get("business_present", False))
 
-        if not wicked_present:
-            business_name = getattr(business_profile, 'name', "Wicked Willys")
+        if not business_present:
+            business_name = getattr(business_profile, 'name', "The business")
             issues.append({
                 "issue_id": "missing_from_ranked",
                 "severity": "high",
@@ -619,11 +619,11 @@ class Agent2ActionPlanning:
         for delta in report.get("deltas_vs_top", []) or []:
             factor = (delta.get("factor") or "").lower()
             why = delta.get("why_delta") or "Gap detected vs top competitor."
-            wicked_score = delta.get("wicked_score_estimate")
+            business_score = delta.get("business_score_estimate")
             top_score = delta.get("top_competitor_score_estimate")
 
             # Only create issues when the gap is material
-            if isinstance(wicked_score, int) and isinstance(top_score, int) and (top_score - wicked_score) >= 2:
+            if isinstance(business_score, int) and isinstance(top_score, int) and (top_score - business_score) >= 2:
                 if factor in ("trust", "prominence"):
                     issues.append({"issue_id": "low_citations", "severity": "high", "description": why})
                 elif factor == "relevance":
@@ -650,18 +650,18 @@ class Agent2ActionPlanning:
         appropriate issues based on its position or absence.
         """
         issues: List[Dict[str, Any]] = []
-        business_name = getattr(business_profile, 'name', "Wicked Willy's")
+        business_name = getattr(business_profile, 'name', "The business")
         business_name_lower = business_name.lower()
-        
+
         # Check if business is in ranked results
-        wicked_rank = None
+        business_rank = None
         for result in ranked_results:
             name = result.get("name", "").lower()
-            if business_name_lower in name or "wicked" in name:
-                wicked_rank = result.get("rank")
+            if business_name_lower in name:
+                business_rank = result.get("rank")
                 break
-        
-        if wicked_rank is None:
+
+        if business_rank is None:
             # Business is NOT in the ranked results - this is a critical issue
             issues.append({
                 "issue_id": "missing_from_ranked",
@@ -695,14 +695,14 @@ class Agent2ActionPlanning:
                 )
             })
             
-        elif wicked_rank > 3:
+        elif business_rank > 3:
             # Business is ranked but not in top 3
             issues.append({
                 "issue_id": "low_ranking",
-                "title": f"{business_name} Ranked #{wicked_rank} - Room for Improvement",
+                "title": f"{business_name} Ranked #{business_rank} - Room for Improvement",
                 "severity": "high",
                 "description": (
-                    f"{business_name} appears at position #{wicked_rank}. "
+                    f"{business_name} appears at position #{business_rank}. "
                     f"To move into top 3, need to improve reviews, citations, and content relevance."
                 )
             })
@@ -721,10 +721,10 @@ class Agent2ActionPlanning:
             # Business is in top 3 - maintenance mode
             issues.append({
                 "issue_id": "maintain_ranking",
-                "title": f"Maintain #{wicked_rank} Position",
+                "title": f"Maintain #{business_rank} Position",
                 "severity": "low",
                 "description": (
-                    f"{business_name} is ranked #{wicked_rank}. "
+                    f"{business_name} is ranked #{business_rank}. "
                     f"Focus on maintaining and defending this position through consistent optimization."
                 )
             })
@@ -769,7 +769,7 @@ class Agent2ActionPlanning:
 
         return results
 
-    def _find_wicked_in_ranked(self, ranked_compact: List[Dict[str, Any]], brand_name: str) -> (bool, Optional[int]):
+    def _find_business_in_ranked(self, ranked_compact: List[Dict[str, Any]], brand_name: str) -> (bool, Optional[int]):
         brand_name_l = (brand_name or "").strip().lower()
         for r in ranked_compact:
             nm = (r.get("name") or "").strip().lower()

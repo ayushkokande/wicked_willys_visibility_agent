@@ -67,10 +67,10 @@ npm run dev
 ```
 
 Open http://localhost:5173 and start chatting. Try:
-1. "My business is Wicked Willy's at 149 Bleecker St, New York, NY 10012. We're a bar."
-2. "Why don't I show up when people search 'best bars near Bleecker Street'?"
+1. "My business is [name] at [address]. We're a [category]."
+2. "Why don't I show up when people search '[your target keyword]'?"
 3. "Generate JSON-LD schema markup for my business"
-4. "What directories should I list my bar on?"
+4. "What directories should I list my business on?"
 
 ### Deploy to Cloudflare
 
